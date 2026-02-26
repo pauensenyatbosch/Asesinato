@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VR: Apunta 2 segundos y elimina al enemigo</title>
+    <!-- Importar A-Frame -->
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        #mensaje-final {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: black;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 3rem;
+            text-align: center;
+            z-index: 1000;
+            visibility: hidden; /* Oculto por defecto */
+            pointer-events: none; /* Para que no bloquee la interacción si está oculto */
+        }
+    </style>
+</head>
+<body>
+    <!-- Overlay para el mensaje final -->
+    <div id="mensaje-final">HAS ELIMINADO AL ENEMIGO</div>
+
+    <a-scene background="color: #111" vr-mode-ui="enabled: true">
+        <!-- Fondo 360º con la imagen oficina.jpg -->
+        <a-sky src="oficina.jpg" rotation="0 -90 0"></a-sky>
+
+        <!-- Cámara con cursor y raycaster. El cursor se activa al mirar objetos. -->
+        <a-camera position="0 1.6 0" wasd-controls-enabled="true" look-controls-enabled="true">
+            <!-- Cursor con fusión de 2 segundos (fuseTimeout=2000) 
+                 El atributo fuse="true" habilita la cuenta atrás al mirar un objeto con clase .enemy -->
+            <a-cursor 
+                id="cursor" 
+                raycaster="objects: .enemy; far: 20; interval: 100" 
+                fuse="true"
+                fuse-timeout="2000"
+                material="color: white; shader: flat" 
+                scale="0.5 0.5 0.5"
+                animation__click="property: scale; startEvents: click; easing: easeInCubic; dur: 150; from: 0.5 0.5 0.5; to: 1 1 1"
+                animation__fusing="property: scale; startEvents: fusing; easing: easeInCubic; dur: 150; from: 1 1 1; to: 0.2 0.2 0.2">
+            </a-cursor>
+
+            <!-- La pistola va anclada a la cámara, rotada 90 grados a la derecha (eje Y) 
+                 y ligeramente desplazada para simular que la sostenemos. -->
+            <a-entity 
+                id="pistola" 
+                gltf-model="pistola.glb" 
+                position="0.3 -0.3 -0.6" 
+                rotation="0 90 0" 
+                scale="0.5 0.5 0.5"
+                ></a-entity>
+        </a-camera>
+
+        <!-- Enemigo: colocado en una posición más cercana pero fuera del campo de visión inicial (a la derecha).
+             Tiene la clase "enemy" para que el raycaster lo detecte. -->
+        <a-entity 
+            id="enemigo" 
+            class="enemy" 
+            gltf-model="enemigo.glb" 
+            position="2 0 -2"      <!-- Más cerca pero a la derecha, fuera de la vista frontal inicial -->
+            scale="1 1 1"
+            ></a-entity>
+
+        <!-- Luces básicas -->
+        <a-light type="ambient" intensity="0.5"></a-light>
+        <a-light type="directional" intensity="1" position="1 2 1"></a-light>
+
+        <!-- Manejo de eventos: al hacer click (después de 2 segundos de mira) el enemigo desaparece y mostramos mensaje -->
+        <script>
+            (function() {
+                // Esperar a que la escena cargue
+                const scene = document.querySelector('a-scene');
+                if (scene.hasLoaded) {
+                    init();
+                } else {
+                    scene.addEventListener('loaded', init);
+                }
+
+                function init() {
+                    const enemy = document.getElementById('enemigo');
+                    const mensajeDiv = document.getElementById('mensaje-final');
+
+                    if (!enemy) return;
+
+                    // Variable para controlar que solo se active una vez
+                    let eliminado = false;
+
+                    // Escuchar el evento 'click' en el enemigo (se dispara tras el fuse de 2 segundos)
+                    enemy.addEventListener('click', function (evt) {
+                        if (eliminado) return; // Ya se eliminó antes
+                        eliminado = true;
+
+                        // Ocultar el enemigo (desaparece)
+                        enemy.setAttribute('visible', 'false');
+
+                        // Mostrar el mensaje de fondo negro con texto
+                        mensajeDiv.style.visibility = 'visible';
+
+                        // Opcional: ocultar el cursor o la pistola si se desea, pero no es necesario.
+                        // Podrías también detener el raycaster del cursor para que no siga interactuando.
+                        const cursor = document.getElementById('cursor');
+                        if (cursor) {
+                            // Deshabilitar el fuse para que no pueda seguir activando nada (opcional)
+                            cursor.setAttribute('fuse', 'false');
+                        }
+
+                        // También podrías cambiar el color del cursor para dar feedback, pero no es obligatorio.
+                    });
+
+                    // Depuración: si el modelo tiene muchas animaciones no importa, ya no las usamos.
+                    console.log('Sistema listo: apunta al enemigo 2 segundos para eliminarlo.');
+                }
+            })();
+        </script>
+
+        <!-- Mensaje de ayuda inicial (desaparecerá cuando se elimine al enemigo, pero no lo gestionamos) -->
+        <a-text value="Mira al enemigo 2 segundos para eliminarlo" color="white" position="0 2 -3" align="center" scale="2 2 2"></a-text>
+    </a-scene>
+</body>
+</html>
